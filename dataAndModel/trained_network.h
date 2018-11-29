@@ -43,17 +43,17 @@ public:
 
 private:
 	int model_idx;
-	std::string model_dir;													//! model folder
-	std::vector<std::string> model_names;									//! model names
+	std::string model_dir;									//! model folder
+	std::vector<std::string> model_names;							//! model names
 	std::vector<std::vector<std::string>> input_node_names;					//! input node names
-	std::vector<std::vector<int>> input_node_channels;						//! input node channel number
+	std::vector<std::vector<int>> input_node_channels;					//! input node channel number
 	std::vector<std::vector<std::string>> output_node_names;				//! output node names
 	int iH, iW;																//! input image size
 
-	tensorflow::Status m_status;											//! tensorflow status
-	tensorflow::Session* m_session;											//! tensorflow session
-	tensorflow::GraphDef m_graph_def;										//! graph definition
-	std::vector<std::pair<std::string, tensorflow::Tensor>> m_inputs;		//! input name and tensor pairs
+	tensorflow::Status m_status;								//! tensorflow status
+	tensorflow::Session* m_session;								//! tensorflow session
+	tensorflow::GraphDef m_graph_def;							//! graph definition
+	std::vector<std::pair<std::string, tensorflow::Tensor>> m_inputs;			//! input name and tensor pairs
 };
 
 #endif
