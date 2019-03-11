@@ -11,7 +11,7 @@ Now we provide the Google drive link for downloading training datasets:
 >[Training data](https://drive.google.com/drive/folders/1eEt_5UFwx5M24QGZklWJmtCUp2md5KGh?usp=sharing)
 
 
-## Trained models
+## Trained network
 
 We provide Google drive links for downloading the checkpoint and frozen network  files of our full network:
 >[Checkpoint](https://drive.google.com/drive/folders/1X5are7bgvjAItb0JsnyyxJuzuRBU1W4f?usp=sharing) <br />
