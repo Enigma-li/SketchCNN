@@ -39,6 +39,20 @@ hyper_params = {
     'graphName': '',
 }
 
+nprLine_input = tf.placeholder(tf.float32, [None, None, None, 1], name='npr_input')
+ds_input = tf.placeholder(tf.float32, [None, None, None, 1], name='ds_input')
+fm_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLMask_input')
+fmInv_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLInvMask_input')
+gtNormal_input = tf.placeholder(tf.float32, [None, None, None, 3], name='gtN_input')
+gtDepth_input = tf.placeholder(tf.float32, [None, None, None, 1], name='gtD_input')
+gtField_input = tf.placeholder(tf.float32, [None, None, None, 3], name='gtField_input')
+clineInvMask_input = tf.placeholder(tf.float32, [None, None, None, 1], name='clIMask_input')
+maskShape_input = tf.placeholder(tf.float32, [None, None, None, 1], name='shapeMask_input')
+maskDs_input = tf.placeholder(tf.float32, [None, None, None, 1], name='dsMask_input')
+mask2D_input = tf.placeholder(tf.float32, [None, None, None, 1], name='2dMask_input')
+selLineMask_input = tf.placeholder(tf.float32, [None, None, None, 1], name='sLMask_input')
+vdotnScalar_input = tf.placeholder(tf.float32, [None, None, None, 1], name='curvMag_input')
+
 
 # depth, normal regularization term
 def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, fl_mask_inv, scope='reg_loss'):
@@ -161,23 +175,23 @@ def test_procedure(net, test_records):
     mask2d, selm, ndotv = net.cook_raw_inputs(raw_input)
 
     # Network forward
-    logit_f, _ = net.load_field_net(npr_lines,
-                                    mask2d,
-                                    ds,
-                                    fm,
-                                    selm,
-                                    ndotv,
+    logit_f, _ = net.load_field_net(nprLine_input,
+                                    mask2D_input,
+                                    ds_input,
+                                    fm_input,
+                                    selLineMask_input,
+                                    vdotnScalar_input,
                                     hyper_params['rootFt'],
                                     is_training=False)
 
-    logit_d, logit_n, logit_c, _ = net.load_GeomNet(npr_lines,
-                                                    ds,
-                                                    mask2d,
-                                                    fm,
-                                                    selm,
-                                                    ndotv,
+    logit_d, logit_n, logit_c, _ = net.load_GeomNet(nprLine_input,
+                                                    ds_input,
+                                                    mask2D_input,
+                                                    fm_input,
+                                                    selLineMask_input,
+                                                    vdotnScalar_input,
                                                     logit_f,
-                                                    mask_cline_inv,
+                                                    clineInvMask_input,
                                                     hyper_params['rootFt'],
                                                     is_training=False)
 
@@ -188,20 +202,22 @@ def test_procedure(net, test_records):
         = loss(logit_d,
                logit_n,
                logit_c,
-               gt_normal,
-               gt_depth,
-               mask_shape,
-               mask_ds,
-               mask_cline_inv,
-               ds,
-               npr_lines,
+               gtNormal_input,
+               gtDepth_input,
+               maskShape_input,
+               maskDs_input,
+               clineInvMask_input,
+               ds_input,
+               nprLine_input,
                logit_f,
-               gt_field,
-               fm_inv)
+               gtField_input,
+               fmInv_input)
 
     return test_loss, test_d_loss, test_n_loss, test_ds_loss, test_reg_loss, test_real_dloss, \
            test_real_nloss, test_omega_loss, out_gt_normal, out_f_normal, out_gt_depth, \
-           out_f_depth, out_gt_ds, gt_lines, reg_mask, out_cf_map, test_gt_a, test_gt_b, test_f_a, test_f_b
+           out_f_depth, out_gt_ds, gt_lines, reg_mask, out_cf_map, test_gt_a, test_gt_b, test_f_a, test_f_b, \
+           [npr_lines, ds, fm, fm_inv, gt_normal, gt_depth, gt_field,
+            mask_cline_inv, mask_shape, mask_ds, mask2d, selm, ndotv]
 
 
 def test_net():
@@ -218,7 +234,7 @@ def test_net():
 
     test_loss, test_d_loss, test_n_loss, test_ds_loss, test_r_loss, test_real_dloss, \
     test_real_nloss, test_omega_loss, test_gt_normal, test_f_normal, test_gt_depth, test_f_depth, test_gt_ds, \
-    test_gt_lines, test_reg_mask, test_f_cfmap, test_gt_a, test_gt_b, test_f_a, test_f_b \
+    test_gt_lines, test_reg_mask, test_f_cfmap, test_gt_a, test_gt_b, test_f_a, test_f_b, test_inputList \
         = test_procedure(net, test_records)
 
     # Saver
@@ -251,13 +267,30 @@ def test_net():
             avg_loss = 0.0
             while not coord.should_stop():
 
+                # get real input
+                test_real_input = sess.run(test_inputList)
+
                 t_loss, t_d_loss, t_n_loss, t_ds_loss, t_r_loss, t_real_dloss, t_real_nloss, \
                 t_omega_loss, t_gt_normal, t_f_normal, t_gt_depth, t_f_depth, t_gt_ds, t_gt_lines, t_reg_mask, \
                 t_f_cfmap, t_gt_a, t_gt_b, t_f_a, t_f_b \
                     = sess.run([test_loss, test_d_loss, test_n_loss, test_ds_loss, test_r_loss,
                                 test_real_dloss, test_real_nloss, test_omega_loss, test_gt_normal, test_f_normal,
                                 test_gt_depth, test_f_depth, test_gt_ds, test_gt_lines, test_reg_mask, test_f_cfmap,
-                                test_gt_a, test_gt_b, test_f_a, test_f_b])
+                                test_gt_a, test_gt_b, test_f_a, test_f_b],
+                               feed_dict={'npr_input:0': test_real_input[0],
+                                          'ds_input:0': test_real_input[1],
+                                          'fLMask_input:0': test_real_input[2],
+                                          'fLInvMask_input:0': test_real_input[3],
+                                          'gtN_input:0': test_real_input[4],
+                                          'gtD_input:0': test_real_input[5],
+                                          'gtField_input:0': test_real_input[6],
+                                          'clIMask_input:0': test_real_input[7],
+                                          'shapeMask_input:0': test_real_input[8],
+                                          'dsMask_input:0': test_real_input[9],
+                                          '2dMask_input:0': test_real_input[10],
+                                          'sLMask_input:0': test_real_input[11],
+                                          'curvMag_input:0': test_real_input[12]
+                                          })
 
                 # Record loss
                 avg_loss += t_loss

@@ -41,6 +41,17 @@ hyper_params = {
     'smoothWeight': 0.1,
 }
 
+nprLine_input = tf.placeholder(tf.float32, [None, None, None, 1], name='npr_input')
+ds_input = tf.placeholder(tf.float32, [None, None, None, 1], name='ds_input')
+fm_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLMask_input')
+fmInv_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLInvMask_input')
+gtField_input = tf.placeholder(tf.float32, [None, None, None, 3], name='gtField_input')
+clineInvMask_input = tf.placeholder(tf.float32, [None, None, None, 1], name='clIMask_input')
+maskShape_input = tf.placeholder(tf.float32, [None, None, None, 1], name='shapeMask_input')
+mask2D_input = tf.placeholder(tf.float32, [None, None, None, 1], name='2dMask_input')
+selLineMask_input = tf.placeholder(tf.float32, [None, None, None, 1], name='sLMask_input')
+vdotnScalar_input = tf.placeholder(tf.float32, [None, None, None, 1], name='curvMag_input')
+
 
 # TensorBoard: collect training images
 def collect_vis_img(logit_f, npr_lines, gt_field, shape_mask, line_inv, ds, fm, sel_m, vdotn, fm_inv):
@@ -223,16 +234,16 @@ def train_procedure(net, train_records):
 
     # split data
     with tf.name_scope('divide_data'):
-        gpu_npr_lines = tf.split(npr_lines, nb_gpus, axis=0)
-        gpu_mask2d = tf.split(mask_2d, nb_gpus, axis=0)
-        gpu_ds = tf.split(ds, nb_gpus, axis=0)
-        gpu_fm = tf.split(fm, nb_gpus, axis=0)
-        gpu_fm_inv = tf.split(fm_inv, nb_gpus, axis=0)
-        gpu_selm = tf.split(selm, nb_gpus, axis=0)
-        gpu_vdotn = tf.split(vdotn, nb_gpus, axis=0)
-        gpu_gt_field = tf.split(gt_field, nb_gpus, axis=0)
-        gpu_mask_shape = tf.split(mask_shape, nb_gpus, axis=0)
-        gpu_mask_cline = tf.split(cline_mask_inv, nb_gpus, axis=0)
+        gpu_npr_lines = tf.split(nprLine_input, nb_gpus, axis=0)
+        gpu_mask2d = tf.split(mask2D_input, nb_gpus, axis=0)
+        gpu_ds = tf.split(ds_input, nb_gpus, axis=0)
+        gpu_fm = tf.split(fm_input, nb_gpus, axis=0)
+        gpu_fm_inv = tf.split(fmInv_input, nb_gpus, axis=0)
+        gpu_selm = tf.split(selLineMask_input, nb_gpus, axis=0)
+        gpu_vdotn = tf.split(vdotnScalar_input, nb_gpus, axis=0)
+        gpu_gt_field = tf.split(gtField_input, nb_gpus, axis=0)
+        gpu_mask_shape = tf.split(maskShape_input, nb_gpus, axis=0)
+        gpu_mask_cline = tf.split(clineInvMask_input, nb_gpus, axis=0)
 
     tower_grads = []
     tower_loss_collected = []
@@ -330,7 +341,8 @@ def train_procedure(net, train_records):
     proto_list.append(train_smooth_loss_proto)
     merged_train = tf.summary.merge(proto_list)
 
-    return merged_train, train_op, averaged_losses[0]
+    return merged_train, train_op, averaged_losses[0], \
+           [npr_lines, ds, fm, fm_inv, gt_field, cline_mask_inv, mask_shape, mask_2d, selm, vdotn]
 
 
 # validation process
@@ -345,39 +357,40 @@ def validation_procedure(net, val_records):
             = net.cook_raw_inputs(raw_input)
 
     # Network forward
-    logit_f, _ = net.load_field_net(npr_lines,
-                                    mask2d,
-                                    ds,
-                                    fm,
-                                    selm,
-                                    vdotn,
+    logit_f, _ = net.load_field_net(nprLine_input,
+                                    mask2D_input,
+                                    ds_input,
+                                    fm_input,
+                                    selLineMask_input,
+                                    vdotnScalar_input,
                                     hyper_params['rootFt'],
                                     is_training=False,
                                     reuse=True)
 
     # Validate loss
     val_loss, val_data_loss, val_smooth_loss = loss(logit_f,
-                                                    gt_field,
-                                                    mask_shape,
-                                                    cline_mask_inv,
-                                                    fm_inv,
+                                                    gtField_input,
+                                                    maskShape_input,
+                                                    clineInvMask_input,
+                                                    fmInv_input,
                                                     scope='test_loss')
 
     # TensorBoard
     proto_list = collect_vis_img_val(logit_f,
-                                     npr_lines,
-                                     gt_field,
-                                     mask_shape,
-                                     cline_mask_inv,
-                                     ds,
-                                     fm,
-                                     selm,
-                                     vdotn,
-                                     fm_inv)
+                                     nprLine_input,
+                                     gtField_input,
+                                     maskShape_input,
+                                     clineInvMask_input,
+                                     ds_input,
+                                     fm_input,
+                                     selLineMask_input,
+                                     vdotnScalar_input,
+                                     fmInv_input)
 
     merged_val = tf.summary.merge(proto_list)
 
-    return merged_val, val_loss, val_data_loss, val_smooth_loss
+    return merged_val, val_loss, val_data_loss, val_smooth_loss, \
+           [npr_lines, ds, fm, fm_inv, gt_field, cline_mask_inv, mask_shape, mask2d, selm, vdotn]
 
 
 def train_net():
@@ -392,7 +405,7 @@ def train_net():
     train_data_records = [item for item in os.listdir(hyper_params['dbTrain']) if item.endswith('.tfrecords')]
     train_records = [os.path.join(hyper_params['dbTrain'], item) for item in train_data_records if
                      item.find('train') != -1]
-    train_summary, train_step, train_loss = train_procedure(net, train_records)
+    train_summary, train_step, train_loss, train_inputList = train_procedure(net, train_records)
 
     # Validation
     val_data_records = [item for item in os.listdir(hyper_params['dbEval']) if item.endswith('.tfrecords')]
@@ -402,7 +415,7 @@ def train_net():
     num_eval_itr = num_eval_samples // hyper_params['batchSize']
     num_eval_itr += 1
 
-    val_proto, val_total_loss, val_data_loss, val_smooth_loss = validation_procedure(net, val_records)
+    val_proto, val_total_loss, val_data_loss, val_smooth_loss, val_inputList = validation_procedure(net, val_records)
 
     valid_loss = tf.placeholder(tf.float32, name='val_loss')
     valid_loss_proto = tf.summary.scalar('Validating_TotalLoss', valid_loss)
@@ -439,13 +452,39 @@ def train_net():
                 avg_data_loss = 0.0
                 avg_smooth_loss = 0.0
                 for eitr in range(num_eval_itr):
+
+                    # get real input
+                    val_real_input = sess.run(val_inputList)
+
                     if eitr == idx:
                         val_merge, cur_v_loss, cur_v_data_loss, cur_v_smooth_loss = sess.run(
-                            [val_proto, val_total_loss, val_data_loss, val_smooth_loss])
+                            [val_proto, val_total_loss, val_data_loss, val_smooth_loss],
+                            feed_dict={'npr_input:0': val_real_input[0],
+                                       'ds_input:0': val_real_input[1],
+                                       'fLMask_input:0': val_real_input[2],
+                                       'fLInvMask_input:0': val_real_input[3],
+                                       'gtField_input:0': val_real_input[4],
+                                       'clIMask_input:0': val_real_input[5],
+                                       'shapeMask_input:0': val_real_input[6],
+                                       '2dMask_input:0': val_real_input[7],
+                                       'sLMask_input:0': val_real_input[8],
+                                       'curvMag_input:0': val_real_input[9]
+                                       })
                         train_writer.add_summary(val_merge, titr)
                     else:
                         cur_v_loss, cur_v_data_loss, cur_v_smooth_loss = sess.run(
-                            [val_total_loss, val_data_loss, val_smooth_loss])
+                            [val_total_loss, val_data_loss, val_smooth_loss],
+                            feed_dict={'npr_input:0': val_real_input[0],
+                                       'ds_input:0': val_real_input[1],
+                                       'fLMask_input:0': val_real_input[2],
+                                       'fLInvMask_input:0': val_real_input[3],
+                                       'gtField_input:0': val_real_input[4],
+                                       'clIMask_input:0': val_real_input[5],
+                                       'shapeMask_input:0': val_real_input[6],
+                                       '2dMask_input:0': val_real_input[7],
+                                       'sLMask_input:0': val_real_input[8],
+                                       'curvMag_input:0': val_real_input[9]
+                                       })
                     avg_loss += cur_v_loss
                     avg_data_loss += cur_v_data_loss
                     avg_smooth_loss += cur_v_smooth_loss
@@ -465,7 +504,21 @@ def train_net():
                 train_logger.info('Save model at step: {:d}'.format(titr))
 
             # Training
-            t_summary, _, t_loss = sess.run([train_summary, train_step, train_loss])
+            # get real input
+            train_real_input = sess.run(train_inputList)
+
+            t_summary, _, t_loss = sess.run([train_summary, train_step, train_loss],
+                                            feed_dict={'npr_input:0': train_real_input[0],
+                                                       'ds_input:0': train_real_input[1],
+                                                       'fLMask_input:0': train_real_input[2],
+                                                       'fLInvMask_input:0': train_real_input[3],
+                                                       'gtField_input:0': train_real_input[4],
+                                                       'clIMask_input:0': train_real_input[5],
+                                                       'shapeMask_input:0': train_real_input[6],
+                                                       '2dMask_input:0': train_real_input[7],
+                                                       'sLMask_input:0': train_real_input[8],
+                                                       'curvMag_input:0': train_real_input[9]
+                                                       })
 
             # display
             if titr % hyper_params['dispLossStep'] == 0:
