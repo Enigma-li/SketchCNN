@@ -145,7 +145,7 @@ def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, fl_mask_inv, scope='
         # convert normal signal back to [-1, 1]
         converted_n = (logit_n * 2.0) - 1.0
 
-        img_shape = logit_d.get_shape().as_list()
+        img_shape = tf.shape(logit_d)
         N = img_shape[0]
         H = img_shape[1]
         W = img_shape[2]
@@ -158,15 +158,16 @@ def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, fl_mask_inv, scope='
         mask_shift_x = tf.slice(combined_mask, [0, 0, 0, 0], [-1, -1, W - 1, -1])
         mask_shift_y = tf.slice(combined_mask, [0, 0, 0, 0], [-1, H - 1, -1, -1])
 
-        c0 = tf.constant(K, shape=[N, H, W - 1, 1])
+        c0 = tf.fill([N, H, W - 1, 1], K)
         c1 = tf.zeros(shape=[N, H, W - 1, 1])
+
         cx = logit_d[:, :, 1:, :] - logit_d[:, :, :-1, :]
         t_x = tf.concat([c0, c1, cx], axis=3)
         # approximate normalization
         t_x /= K
 
         c2 = tf.zeros(shape=[N, H - 1, W, 1])
-        c3 = tf.constant(K, shape=[N, H - 1, W, 1])
+        c3 = tf.fill([N, H - 1, W, 1], K)
         cy = logit_d[:, 1:, :, :] - logit_d[:, :-1, :, :]
         t_y = tf.concat([c2, c3, cy], axis=3)
         # approximate normalization
@@ -532,6 +533,7 @@ def train_net():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.allow_soft_placement = True
+    # config.log_device_placement = True
 
     with tf.Session(config=config) as sess:
         # TF summary
@@ -643,43 +645,43 @@ def train_net():
             train_writer.add_summary(valid_summary, titr)
             train_logger.info('Validation loss at step {} is: {}'.format(titr, avg_loss))
 
-        # Save model
-        if titr % hyper_params['saveModelStep'] == 0:
-            tf_saver.save(sess, hyper_params['outDir'] + '/savedModel/my_model{:d}.ckpt'.format(titr))
-            train_logger.info('Save model at step: {:d}, reg weight: {}'.format(titr, cur_weight))
+            # Save model
+            if titr % hyper_params['saveModelStep'] == 0:
+                tf_saver.save(sess, hyper_params['outDir'] + '/savedModel/my_model{:d}.ckpt'.format(titr))
+                train_logger.info('Save model at step: {:d}, reg weight: {}'.format(titr, cur_weight))
 
-            # Training
-            # get real input
-            train_real_input = sess.run(train_inputList)
+                # Training
+                # get real input
+                train_real_input = sess.run(train_inputList)
 
-    t_summary, _, t_loss = sess.run([train_summary, train_step, train_loss],
-                                    feed_dict={'reg_weight:0': cur_weight,
-                                               'npr_input:0': train_real_input[0],
-                                               'ds_input:0': train_real_input[1],
-                                               'fLMask_input:0': train_real_input[2],
-                                               'fLInvMask_input:0': train_real_input[3],
-                                               'gtN_input:0': train_real_input[4],
-                                               'gtD_input:0': train_real_input[5],
-                                               'clIMask_input:0': train_real_input[6],
-                                               'shapeMask_input:0': train_real_input[7],
-                                               'dsMask_input:0': train_real_input[8],
-                                               '2dMask_input:0': train_real_input[9],
-                                               'sLMask_input:0': train_real_input[10],
-                                               'curvMag_input:0': train_real_input[11]
-                                               })
+                t_summary, _, t_loss = sess.run([train_summary, train_step, train_loss],
+                                                feed_dict={'reg_weight:0': cur_weight,
+                                                           'npr_input:0': train_real_input[0],
+                                                           'ds_input:0': train_real_input[1],
+                                                           'fLMask_input:0': train_real_input[2],
+                                                           'fLInvMask_input:0': train_real_input[3],
+                                                           'gtN_input:0': train_real_input[4],
+                                                           'gtD_input:0': train_real_input[5],
+                                                           'clIMask_input:0': train_real_input[6],
+                                                           'shapeMask_input:0': train_real_input[7],
+                                                           'dsMask_input:0': train_real_input[8],
+                                                           '2dMask_input:0': train_real_input[9],
+                                                           'sLMask_input:0': train_real_input[10],
+                                                           'curvMag_input:0': train_real_input[11]
+                                                           })
 
-    # Display
-    if titr % hyper_params['dispLossStep'] == 0:
-        train_writer.add_summary(t_summary, titr)
-        train_logger.info('Training loss at step {} is: {}'.format(titr, t_loss))
+            # Display
+            if titr % hyper_params['dispLossStep'] == 0:
+                train_writer.add_summary(t_summary, titr)
+                train_logger.info('Training loss at step {} is: {}'.format(titr, t_loss))
 
+        # Finish training
+        coord.request_stop()
+        coord.join(threads)
 
-# Finish training
-coord.request_stop()
-coord.join(threads)
+        # Release resource
+        train_writer.close()
 
-# Release resource
-train_writer.close()
 
 if __name__ == '__main__':
     # parse arguments

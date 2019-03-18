@@ -27,9 +27,9 @@ def slice_tensor(tensor1, tensor2):
     :return: sliced tensor.
     """
     with tf.name_scope("slice_tenosr") as _:
-        t1_shape = tensor1.get_shape().as_list()
-        t2_shape = tensor2.get_shape().as_list()
-
+        t1_shape = tf.shape(tensor1)
+        t2_shape = tf.shape(tensor2)
+		
         offsets = [0, (t1_shape[1] - t2_shape[1]) // 2, (t1_shape[2] - t2_shape[2]) // 2, 0]
         size = [-1, t2_shape[1], t2_shape[2], -1]
         return tf.slice(tensor1, offsets, size)

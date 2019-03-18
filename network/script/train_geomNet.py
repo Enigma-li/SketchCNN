@@ -51,7 +51,7 @@ fm_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLMask_input'
 fmInv_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLInvMask_input')
 gtNormal_input = tf.placeholder(tf.float32, [None, None, None, 3], name='gtN_input')
 gtDepth_input = tf.placeholder(tf.float32, [None, None, None, 1], name='gtD_input')
-gtField_input = tf.placeholder(tf.float32, [None, None, None, 3], name='gtField_input')
+gtField_input = tf.placeholder(tf.float32, [None, None, None, 4], name='gtField_input')
 clineInvMask_input = tf.placeholder(tf.float32, [None, None, None, 1], name='clIMask_input')
 maskShape_input = tf.placeholder(tf.float32, [None, None, None, 1], name='shapeMask_input')
 maskDs_input = tf.placeholder(tf.float32, [None, None, None, 1], name='dsMask_input')
@@ -83,7 +83,7 @@ def collect_vis_img(logit_d, logit_n, logit_c, logit_f, npr, normal, depth, shap
         gt_field = slice_tensor(gt_field * mask4, logit_n)
         gt_field = gt_field * line_mask4
         logit_f = logit_f * mask_crop4 * line_mask4
-        cur_shape = logit_n.get_shape().as_list()
+        cur_shape = tf.shape(logit_n)
         lc = tf.zeros([cur_shape[0], cur_shape[1], cur_shape[2], 1], tf.float32)
         f_coeff_a = tf.concat([tf.slice(logit_f, [0, 0, 0, 0], [-1, -1, -1, 2]), lc], axis=3)
         f_coeff_b = tf.concat([tf.slice(logit_f, [0, 0, 0, 2], [-1, -1, -1, 2]), lc], axis=3)
@@ -141,7 +141,7 @@ def collect_vis_img_val(logit_d, logit_n, logit_c, logit_f, npr, normal, depth, 
         gt_field = slice_tensor(gt_field * mask4, logit_n)
         gt_field = gt_field * line_mask4
         logit_f = logit_f * mask_crop4 * line_mask4
-        cur_shape = logit_n.get_shape().as_list()
+        cur_shape = tf.shape(logit_n)
         lc = tf.zeros([cur_shape[0], cur_shape[1], cur_shape[2], 1], tf.float32)
         gt_coeff_a = tf.concat([tf.slice(gt_field, [0, 0, 0, 0], [-1, -1, -1, 2]), lc], axis=3)
         gt_coeff_b = tf.concat([tf.slice(gt_field, [0, 0, 0, 2], [-1, -1, -1, 2]), lc], axis=3)
@@ -181,7 +181,7 @@ def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, fl_mask_inv, scope='
         # convert normal back to [-1, 1]
         converted_n = (logit_n * 2.0) - 1.0
 
-        img_shape = logit_d.get_shape().as_list()
+        img_shape = tf.shape(logit_d)
         N = img_shape[0]
         H = img_shape[1]
         W = img_shape[2]
@@ -194,15 +194,16 @@ def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, fl_mask_inv, scope='
         mask_shift_x = tf.slice(combined_mask, [0, 0, 0, 0], [-1, -1, W - 1, -1])
         mask_shift_y = tf.slice(combined_mask, [0, 0, 0, 0], [-1, H - 1, -1, -1])
 
-        c0 = tf.constant(K, shape=[N, H, W - 1, 1])
+        c0 = tf.fill([N, H, W - 1, 1], K)
         c1 = tf.zeros(shape=[N, H, W - 1, 1])
+
         cx = logit_d[:, :, 1:, :] - logit_d[:, :, :-1, :]
         t_x = tf.concat([c0, c1, cx], axis=3)
         # approximate normalization
         t_x /= K
 
         c2 = tf.zeros(shape=[N, H - 1, W, 1])
-        c3 = tf.constant(K, shape=[N, H - 1, W, 1])
+        c3 = tf.fill([N, H - 1, W, 1], K)
         cy = logit_d[:, 1:, :, :] - logit_d[:, :-1, :, :]
         t_y = tf.concat([c2, c3, cy], axis=3)
         # approximate normalization
@@ -226,7 +227,7 @@ def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, fl_mask_inv, scope='
 def loss(logit_d, logit_n, logit_c, normal, depth, shape_mask, ds_mask, cl_mask_inverse, reg_weight,
          fl_mask_inv, scope='loss'):
     with tf.name_scope(scope) as _:
-        img_shape = logit_d.get_shape().as_list()
+        img_shape = tf.shape(logit_d)
         N = img_shape[0]
         H = img_shape[1]
         W = img_shape[2]
@@ -620,6 +621,8 @@ def train_net():
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+    # config.log_device_placement = True
 
     with tf.Session(config=config) as sess:
         # TF summary

@@ -57,7 +57,7 @@ def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, scope='reg_loss'):
         # convert normal signal back to [-1, 1]
         converted_n = (logit_n * 2.0) - 1.0
 
-        img_shape = logit_d.get_shape().as_list()
+        img_shape = tf.shape(logit_d)
         N = img_shape[0]
         H = img_shape[1]
         W = img_shape[2]
@@ -69,15 +69,16 @@ def reg_loss(logit_n, logit_d, shape_mask, cl_mask_inverse, scope='reg_loss'):
         mask_shift_x = tf.slice(combined_mask, [0, 0, 0, 0], [-1, -1, W - 1, -1])
         mask_shift_y = tf.slice(combined_mask, [0, 0, 0, 0], [-1, H - 1, -1, -1])
 
-        c0 = tf.constant(K, shape=[N, H, W - 1, 1])
+        c0 = tf.fill([N, H, W - 1, 1], K)
         c1 = tf.zeros(shape=[N, H, W - 1, 1])
+
         cx = logit_d[:, :, 1:, :] - logit_d[:, :, :-1, :]
         t_x = tf.concat([c0, c1, cx], axis=3)
         # approximate normalization
         t_x /= K
 
         c2 = tf.zeros(shape=[N, H - 1, W, 1])
-        c3 = tf.constant(K, shape=[N, H - 1, W, 1])
+        c3 = tf.fill([N, H - 1, W, 1], K)
         cy = logit_d[:, 1:, :, :] - logit_d[:, :-1, :, :]
         t_y = tf.concat([c2, c3, cy], axis=3)
         # approximate normalization
@@ -195,8 +196,9 @@ def test_net():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.allow_soft_placement = True
+    # config.log_device_placement = True
 
-    with tf.Session() as sess:
+    with tf.Session(config=config) as sess:
         # initialize
         init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         sess.run(init_op)
@@ -251,33 +253,33 @@ def test_net():
                                                                                         t_n_loss))
 
                 # Write img out
-                # if titr < 200:
-                fn1 = os.path.join(out_img_dir, 'gt_depth_' + str(titr) + '.exr')
-                fn2 = os.path.join(out_img_dir, 'fwd_depth_' + str(titr) + '.exr')
-                fn3 = os.path.join(out_img_dir, 'gt_normal_' + str(titr) + '.exr')
-                fn4 = os.path.join(out_img_dir, 'fwd_normal_' + str(titr) + '.exr')
+                if titr < 200:
+					fn1 = os.path.join(out_img_dir, 'gt_depth_' + str(titr) + '.exr')
+					fn2 = os.path.join(out_img_dir, 'fwd_depth_' + str(titr) + '.exr')
+					fn3 = os.path.join(out_img_dir, 'gt_normal_' + str(titr) + '.exr')
+					fn4 = os.path.join(out_img_dir, 'fwd_normal_' + str(titr) + '.exr')
 
-                out_gt_d = t_gt_depth[0, :, :, :]
-                out_gt_d.astype(np.float32)
-                out_gt_d = np.flip(out_gt_d, 0)
-                cv2.imwrite(fn1, out_gt_d)
+					out_gt_d = t_gt_depth[0, :, :, :]
+					out_gt_d.astype(np.float32)
+					out_gt_d = np.flip(out_gt_d, 0)
+					cv2.imwrite(fn1, out_gt_d)
 
-                out_f_d = t_f_depth[0, :, :, :]
-                out_f_d.astype(np.float32)
-                out_f_d = np.flip(out_f_d, 0)
-                cv2.imwrite(fn2, out_f_d)
+					out_f_d = t_f_depth[0, :, :, :]
+					out_f_d.astype(np.float32)
+					out_f_d = np.flip(out_f_d, 0)
+					cv2.imwrite(fn2, out_f_d)
 
-                out_gt_normal = t_gt_normal[0, :, :, :]
-                out_gt_normal = out_gt_normal[:, :, [2, 1, 0]]
-                out_gt_normal.astype(np.float32)
-                out_gt_normal = np.flip(out_gt_normal, 0)
-                cv2.imwrite(fn3, out_gt_normal)
+					out_gt_normal = t_gt_normal[0, :, :, :]
+					out_gt_normal = out_gt_normal[:, :, [2, 1, 0]]
+					out_gt_normal.astype(np.float32)
+					out_gt_normal = np.flip(out_gt_normal, 0)
+					cv2.imwrite(fn3, out_gt_normal)
 
-                out_f_normal = t_f_normal[0, :, :, :]
-                out_f_normal = out_f_normal[:, :, [2, 1, 0]]
-                out_f_normal.astype(np.float32)
-                out_f_normal = np.flip(out_f_normal, 0)
-                cv2.imwrite(fn4, out_f_normal)
+					out_f_normal = t_f_normal[0, :, :, :]
+					out_f_normal = out_f_normal[:, :, [2, 1, 0]]
+					out_f_normal.astype(np.float32)
+					out_f_normal = np.flip(out_f_normal, 0)
+					cv2.imwrite(fn4, out_f_normal)
 
                 titr += 1
                 if titr % 100 == 0:

@@ -45,7 +45,7 @@ nprLine_input = tf.placeholder(tf.float32, [None, None, None, 1], name='npr_inpu
 ds_input = tf.placeholder(tf.float32, [None, None, None, 1], name='ds_input')
 fm_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLMask_input')
 fmInv_input = tf.placeholder(tf.float32, [None, None, None, 1], name='fLInvMask_input')
-gtField_input = tf.placeholder(tf.float32, [None, None, None, 3], name='gtField_input')
+gtField_input = tf.placeholder(tf.float32, [None, None, None, 4], name='gtField_input')
 clineInvMask_input = tf.placeholder(tf.float32, [None, None, None, 1], name='clIMask_input')
 maskShape_input = tf.placeholder(tf.float32, [None, None, None, 1], name='shapeMask_input')
 mask2D_input = tf.placeholder(tf.float32, [None, None, None, 1], name='2dMask_input')
@@ -64,7 +64,7 @@ def collect_vis_img(logit_f, npr_lines, gt_field, shape_mask, line_inv, ds, fm, 
         logit_f = logit_f * combined_mask
         gt_field = slice_tensor(gt_field, logit_f) * combined_mask
 
-        cur_shape = logit_f.get_shape().as_list()
+        cur_shape = tf.shape(logit_f)
         lc = tf.zeros([cur_shape[0], cur_shape[1], cur_shape[2], 1], tf.float32)
 
         f_coeff_a = tf.concat([tf.slice(logit_f, [0, 0, 0, 0], [-1, -1, -1, 2]), lc], axis=3)
@@ -110,7 +110,7 @@ def collect_vis_img_val(logit_f, npr_lines, gt_field, shape_mask, line_inv, ds, 
         logit_f = logit_f * combined_mask
         gt_field = slice_tensor(gt_field, logit_f) * combined_mask
 
-        cur_shape = logit_f.get_shape().as_list()
+        cur_shape = tf.shape(logit_f)
         lc = tf.zeros([cur_shape[0], cur_shape[1], cur_shape[2], 1], tf.float32)
 
         f_coeff_a = tf.concat([tf.slice(logit_f, [0, 0, 0, 0], [-1, -1, -1, 2]), lc], axis=3)
@@ -163,7 +163,7 @@ def loss(logit_f, gt_field, shape_mask, l_mask_inverse, fl_mask_inv, scope='loss
 
         with tf.name_scope('smoothness_term'):
             # smoothness term
-            img_shape = logit_f.get_shape().as_list()
+            img_shape = tf.shape(logit_f)
             H = img_shape[1]
             W = img_shape[2]
 
@@ -430,6 +430,8 @@ def train_net():
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+    # config.log_device_placement = True
 
     with tf.Session(config=config) as sess:
         # TF summary
