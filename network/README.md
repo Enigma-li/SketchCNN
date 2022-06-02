@@ -16,6 +16,9 @@ There are four sub-folders under the training project root ***network*** folder.
 
 ## Installation
 
+💡 ***Great News***: instead of configuring the environment, you can simply download and load the [docker image](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/changjli_connect_hku_hk/EqW4SILBvVlJtMWxxwZVkckBccpzTSlcCK3qHQjEn5jVZw?e=T45wRL) 
+
+
 To install the training script, please first check the system and packages requirements.
 
 ### System requirement
