@@ -12,6 +12,9 @@ It contains two parts: 1) **network training**, and 2) the peripheral **training
 The code is released under the MIT license.
 
 ### Network training
+
+💡 ***Great News***: we have released the docker image for network training, which will greatly reduce the configuration burden, please check the *networkTraining* folder for more details.
+
 The network training part contains the **Python** code for building, training and testing the CNNs of predicting 3D freeform surfaces from 2D skethes using [TensorFlow](https://www.tensorflow.org/). 
 
 Please read README file within the *network* folder for more details.
