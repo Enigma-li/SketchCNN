@@ -8,14 +8,14 @@ Details about data rendering, please refer to the paper and supplemental materia
 
 Now we provide the Google drive link for downloading training datasets:
 
->[Training data](https://drive.google.com/drive/folders/1eEt_5UFwx5M24QGZklWJmtCUp2md5KGh?usp=sharing)
+>[Training data](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/changjli_connect_hku_hk/Eid5wShYK_ZCmv39yRiL94oBjd_QKKI-AxSGqNI6xSwk3w?e=sicZAl)
 
 
 ## Trained network
 
 We provide Google drive links for downloading the checkpoint and frozen network  files of our full network:
->[Checkpoint](https://drive.google.com/drive/folders/1X5are7bgvjAItb0JsnyyxJuzuRBU1W4f?usp=sharing) <br />
->[Frozen network](https://drive.google.com/drive/folders/15OLTP8_19dUUUXL9JN3zWkeaU3bku3kC?usp=sharing)
+>[Checkpoint](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/changjli_connect_hku_hk/EolJaXUXHyZDvlOHftSGs1IB_raecI2y1_bGsVdXXaLx8A?e=TRdOoD) <br />
+>[Frozen network](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/changjli_connect_hku_hk/EnVC_bMzNllMrPdklQdjqNEBIYyocbiVb3THvNzkOoleLA?e=QVe3VI)
 
 ## network deployment
 
@@ -24,7 +24,8 @@ To deploy the trained network in C++ project in Windows, users must compile and 
 💡💡💡 ***Tips***:
 * We provide the frozen network where you could find the sample configuration files containing the input/output nodes, channel numbers and so on, just try it.
 * The first network forward pass would be time-consuming (about 2s) because of the initialization of GPU and CUDA settings. So after loading the network, please first execute the `warmup` step, all other forward passes after this `warmup` would be fast, i.e. 42ms.
-* Compiling and building TensorFlow from source under Windows is time consuming (*over 2 hours*), we use **Visual Studio 2015** to build **TensorFlow 1.3**, which works for us, other configurations are **not tested**. Email us to ask for the `tensorflow.dll` if you still cannot make it.
+* Compiling and building TensorFlow from source under Windows is time consuming (*over 2 hours*), we use **Visual Studio 2015** to build **TensorFlow 1.3**, which works for us, other configurations are **not tested**.
+* Download the pre-built tensorflow lib and dll [here](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/changjli_connect_hku_hk/Eu8mEaS48SJDiI_wu0wwdOsB387MCl38ifpysEvXWATu-g?e=MQxTxJ)
 
 
 ## Conclude
